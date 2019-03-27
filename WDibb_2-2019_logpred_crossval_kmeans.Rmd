@@ -57,11 +57,11 @@ d.in$export_act_sa <- as.factor(d.in$export_act_sa)
 #set seed to ensure consistent data splits 
 set.seed(476)
 
-#create an 80-20 split into test and training datasets
+#create a 70-30 split into test and training datasets
 
 #1. create training index
 train_index <- createDataPartition(d.in$party_A, 
-                                   p = 0.8, 
+                                   p = 0.7, 
                                    list = FALSE, 
                                    times = 1)
 #2. create separate test and train datasets using training index
