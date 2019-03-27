@@ -1,0 +1,272 @@
+---
+title: "Assignment I"
+author: "Will Dibb"
+date: "January 15, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+> Please submit your answers by 5:59 pm on 01/28/2019
+
+#### Section 1: Probability : Total points 50
+
+
+Q1. Which of the following numbers cannot be probability? Explain why.     
+
+a) -0.0001
+b) 0.05
+c) 3.415
+d) 20%
+e) 1
+
+Ans 1.  a) and c). The assumption here is that the question is asking which of the above values can be used to describe a possible probability value, where all probability values exist between 0 and 1. Since -0.0001 is a negative value, 3.415 > 1, and 20% = 0.2, a) and c) cannot describe real probability values. 
+
+Q2. A card is drawn randomly from a deck of ordinary playing cards. The game rules are that you win if the card is a spade or an ace. What is the probability that you will win the game?
+
+Ans 2. ~30.8%. A or B uses the simple statistical rule p(AUB) = p(A)+p(B)-p(AB). In this case, given A is a spade, p(A) is 1 of 4 suits so its probability is 0.25. Given B is an ace, p(B) is 1 of 13 card values so its probability is 0.077. Since there is one card that is both an ace and a spade, p(AB) is 1 in 52 or 0.019. The probability then of a win condition as  described is p(AUB) = 0.25 + 0.077 - 0.019 = 0.308
+
+Q3. An urban hospital has a 20% mortality rate on average for admitted patients. If on a particular day, 17 patients got admitted, what are:
+
+a) the chances that exactly 7 will survive?
+
+b) the chances that at least 15 patients will survive?    
+
+Ans 3. 
+
+a) is ~.04%. The probability of mortality event P{1} = 0.20. The probability of P{0}, is then 0.80. Since this is a binomial distribution (there  are two possible outcomes for n repeated experiments), the probability of 10 mortalities out of 17 events
+is P(k successes) = (n,k)(p^k)((1-p)^n-k) and (n,k) = n!/(k!(n-k)!).
+P(10 successes) = (17!/(10!(7)!))(0.2^10)(0.8^7) = 0.0004
+
+b) is ~31.0%. The probability that at least 15 patients will survive adds the probabilities of P(k=2), P(k=1), and P(k=0) given 2 or less mortalities for 17 patients. Using the same equation as above:
+P(k=2) = (17!/(2!15!))(0.2^2)(0.8^15) = 0.1914
+P(k=1) = (17!/(1!16!))(0.2^1)(0.8^16) = 0.0957
+P(k=0) = (17!/(0!17!))(0.2^0)(0.8^17) = 0.0225
+P(k<=2 and k>=0) = 0.3096
+
+Q4. Let F and G be two events such that P(F) is 0.4, P(G) is 0.8. F and G are independent events. Fill in the remaining elements of the table.
+
+Table    | $G$ | $\bar{G}$ | Marginal
+---------|-----|-----------|----------
+$F$      |0.32 |   0.08    |   0.4
+$\bar{F}$|0.48 |   0.12    |   0.6
+Marginal |0.8  |   0.2     |    1
+
+Ans 4. P(FG) given F and G are independent, P(FG) = p(F)p(G) so 0.4*0.8=0.32. 
+p(F) = 0.4
+p(G) = 0.8
+\bar{F} = 0.6 
+\bar{G} = 0.2
+
+Q5. Let F and G be two events such that P(F) is 0.2, P(G) is 0.7. Now, the conditional probability P(G|F) is given as 0.4. Fill in the remaining elements of the table.
+
+Table    | $G$ | $\bar{G}$ | Marginal
+---------|-----|-----------|----------
+$F$      |0.08 |    0.12   | 0.2
+$\bar{F}$|0.62 |    0.18   | 0.8
+Marginal |0.7  |    0.3    |  1
+
+Ans 5. 
+P(F) = 0.2
+P(G) = 0.7
+\bar{F} = 0.8
+\bar{G} = 0.3
+P(G|F)*p(F) = p(GF) 
+0.4*0.2 = p(GF) = 0.08
+
+Q6. A survey was conducted among 100 patients about smoking status. The following is the sample size split by smoking status (Yes or No) and gender (Male or Female). 
+
+
+Table    | Smoking (Yes) | Smoking(No) | Total
+---------|---------------|-------------|----------
+Male     |       19      |        36   | 55
+Female   |       13      |        32   | 45
+Total    |       32      |        68   | 100 
+
+
+The probability that a randomly selected patient is a male who smokes is 0.19.  
+
+(a) Fill in all the elements of the table
+
+
+(b) What is the probability of a randomly selected patient being a female?    
+0.45
+
+(c) What is the probability of a randomly selected patient being a smoker?     
+0.32
+
+(d)  What is the probability of a randomly selected smoker being a female?    
+13/32 = 0.406
+
+#### Section 2: Data Analysis using R: Total points 25
+
+
+Q1 : Using the dataset provided ("sample_patient_dataset.csv"), the task to build a 2x2 table for the studying the association between age at admission >70 and cardiac arrests. You can either use the sample table given below or build your own. Remember to output both count and % in the table. Be sure to round the % to the nearest integer (e.g, 0.674 will be 67% and 0.675 will be 68%, see notes in Lecture2 on summary statistics as example). Fill in the code in the shaded areas.
+
+
+Table         | Cardiac Arrests (Yes) | Cardiac Arrests (No) | Total
+--------------|-----------------------|----------------------|----------
+Age > 70 (%)  |      453 (2%)         |     4728 (20%)       | 5181 (21%)
+Age <= 70 (%) |      1672 (7%)        |     17254 (72%)      | 18926 (79%)
+Total         |      2125 (9%)        |     21982 (91%)      | 24,107 (100%)
+
+
+```{r}
+### Output 2x2 table for age >70 vs <= 70 and
+### percent incidence of cardiac arrests in 
+### percent integer value using summary statistics
+
+###clear list, load libraries, read csv input
+
+rm(list = ls())
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyr)
+
+d.in <- read.csv("sample_patient_dataset.csv")
+
+
+# convert dob and admit/discharge dates into date-time format
+d.in <- mutate(d.in, dob_form = mdy(d.in$dob),
+               hosp_admission_form = mdy(d.in$hosp_admission),
+               hosp_discharge_form = mdy(d.in$hosp_discharge))
+
+#read age with correct century in DOB function
+correct_century <- function(x, year=1908){
+  m <- year(x) %% 100
+  year(x) <- ifelse(m > year %% 100, 1900+m, 2000+m)
+  x
+}
+
+#apply function to formatted DOB
+d.in <- d.in %>%
+  mutate(dob_form = correct_century(mdy(dob)))
+
+#calculate age
+d.in <- mutate(d.in, age_at_admit = interval(dob_form, hosp_admission_form) / dyears(1))
+
+#make cardiac arrest column into factor
+d.in <- d.in %>%
+  mutate(had_cardiac_arrests = as.factor(had_cardiac_arrests))
+
+#group counts
+n_cohort <- d.in %>%
+  nrow()
+
+n_over70_ca <- d.in %>%
+  filter(age_at_admit > 70 & had_cardiac_arrests == 1) %>% 
+  nrow()
+
+n_under70_ca <- d.in %>%
+  filter(age_at_admit <= 70 & had_cardiac_arrests == 1) %>%
+  nrow()
+
+n_over70_noca <- d.in %>%
+  filter(age_at_admit > 70 & had_cardiac_arrests == 0) %>%
+  nrow()
+
+n_under70_noca <- d.in %>%
+  filter(age_at_admit <= 70 & had_cardiac_arrests == 0) %>%
+  nrow()
+
+#group percentages
+over70_ca_percent <- round((n_over70_ca/n_cohort)*100)
+
+under70_ca_percent <- round((n_under70_ca/n_cohort)*100)
+
+over70_noca_percent <- round((n_over70_noca/n_cohort)*100)
+
+under70_noca_percent <- round((n_under70_noca/n_cohort)*100)
+
+#concatenated outputs for counts and percentages of each of four groups
+#use paste function to convert term by term into character vector result
+over70_ca_summary <- paste(n_over70_ca,' (',over70_ca_percent,'%)',sep='')
+
+under70_ca_summary <- paste(n_under70_ca,' (',under70_ca_percent,'%)',sep='')
+
+over70_noca_summary <- paste(n_over70_noca,' (',over70_noca_percent,'%)',sep='')
+
+under70_noca_summary <- paste(n_under70_noca,' (',under70_noca_percent,'%)',sep='')
+
+
+
+#create matrix of each of the four groups for both count and percentage
+cardiac_age_table <- matrix(c(over70_ca_summary,over70_noca_summary,under70_ca_summary,under70_noca_summary),ncol = 2, byrow = TRUE)
+
+#label columns for cardiac events total and percentages
+colnames(cardiac_age_table) <- c("Cardiac Event","No Cardiac Event")
+#label rows for age groups
+rownames(cardiac_age_table) <- c("Age Over 70", "Age Under 70")
+
+cardiac_age_table
+
+ 
+```
+
+
+
+Q2: Create your own de-identified version of "patient_dataset.csv". Upload your de-identified dataset onto Canvas and write the de-identification code below. You will need to refer to the document "Deidentification.pdf" (on Canvas, look under files -> lectures -> lecture_2).
+
+### Insert code here
+```{r}
+#clear 
+rm(list=ls())
+#load libraries
+library(plyr)
+library(dplyr)
+library(lubridate)
+
+#read in csv file data frame
+d.in <- read.csv("patient_dataset.csv")
+
+#produce separate table with old and new randomly assigned patient ids
+d.newid <- d.in %>%
+  select(patient.ids) %>%
+  unique()
+d.newid$random_id <- sample(nrow(d.newid), replace = FALSE)
+
+
+#use merge function to add randomly assigned ID column to original dataframe with reference point original patient ids       
+d.in <- merge(d.in, d.newid, by = "patient.ids")
+
+#create deidentified data frame
+#read in original data frame
+d.in <- d.in  %>%
+  #lubridate date format 
+  mutate(discharge_form = mdy(hosp_discharge), 
+         admit_form = mdy(hosp_admission))
+
+#count patient total, then create a random shift function between 1 and 365 to use in dateshifting admit/discharge dates
+patient_count <- nrow(d.in)
+random_shift <- sample(seq(1,365), size = patient_count, replace = TRUE)
+
+#create dateshifted admit/discharge dates
+d.in <- d.in %>%
+  mutate(hosp_admit_did = admit_form + ddays(random_shift),
+         hosp_discharge_did = discharge_form + ddays(random_shift))
+
+#calculate age of patient before removing dob
+d.in <- d.in %>%
+  #format dob
+  mutate(dob_form = mdy(d.in$dob)) %>%
+  #create column with calculated interval
+  mutate(temp_interval = interval(dob_form, admit_form)) %>%
+  #calculate age as new variable
+  mutate(age_at_admit = temp_interval / dyears(1))
+
+  
+ #remove PHI factors for admit, discharge, dob
+d.in <- d.in %>%
+  select(-c(hosp_admission, hosp_discharge, admit_form, discharge_form, dob, dob_form, temp_interval))
+
+  #remove remaining PHI factors
+d.in <- d.in %>%
+select(-patient.ids, -patient.names, -street_address, -zip_code, -city, -contact_number, -admitting_provider) 
+  
+#save deidentified dataset as separate csv file
+write.csv(d.in, "C:/Users/willd/OneDrive/Documents/Winter 2019 UChicago/32000 Intermediate Analytics/deidentified_patient_dataset.csv", row.names = FALSE, quote = TRUE)
+
+
+```

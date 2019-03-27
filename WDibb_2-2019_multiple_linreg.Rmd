@@ -1,0 +1,284 @@
+---
+title: "Assignment III"
+author: "Will Dibb"
+date: "February 5, 2019"
+output: html_document
+---
+
+
+> Please submit your answers by 5:59 pm on Feb 11, 2019. Remember to show your work. In other words, always use echo=TRUE for the R code chunks that you provide. NOTE - All plots must show proper title, axis lables, and any legends used. Points will be deducted otherwise.  
+
+
+## Question 1: Simple Linear Regression
+We are going to work with the dataset bike_data.csv (provided in Files->Assignments->Assignment_3). This dataset has been dowloaded from Kaggle, which is an online prediction contest website (see https://www.kaggle.com/c/bike-sharing-demand/data). The data is essentially the log of hourly bike rentals in a city over two years. The following is the codebook:
+
+. datetime - hourly date + timestamp      
+. season -  1 = spring, 2 = summer, 3 = fall, 4 = winter      
+. holiday - whether the day is considered a holiday     
+. workingday - whether the day is neither a weekend nor holiday     
+. weather - 1: Clear, Few clouds, Partly cloudy, Partly cloudy , 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist , 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds , 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog        
+. temp - temperature in Celsius         
+. atemp - "feels like" temperature in Celsius       
+. humidity - relative humidity        
+. windspeed - wind speed      .
+. casual - number of non-registered user rentals initiated        
+. registered - number of registered user rentals initiated      
+. count - number of total rentals
+
+
+First, we need to do some preprocessing. Specifically, we need to process the year variable and remove all observations with weather == 4 (these are outliers and need to be be removed). 
+
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+# set up
+rm(list=ls())
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+# Read the dataset in
+d.in <- read.csv("bike_data.csv", header = TRUE)
+
+# Preprocess
+d.in <- d.in %>% mutate(datetime_f = mdy_hm(datetime)) %>%
+  mutate(year = as.factor(year(datetime_f))) %>%
+  mutate(weather = as.factor(weather)) %>%
+  filter(weather != "4")
+```
+
+(a) Perform the following simple linear regression: count ~ temperature. What are the coefficients and their 95% confidence intervals?        
+Ans. 
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#Y-response variable: count (number of rentals)
+#X-independent variable: temperature (degrees Celsius)
+
+#count ~ beta-knot + beta-1*temp
+#expectation is that as count goes up, temp goes up
+#Beta-knot (intercept)
+#Beta-n (slope of x-var)
+#so, when temp = 0, count = beta-knot
+#that is, the intercept is the outcome when the predictor is set to 0
+
+#simple linear regression
+#Y ~ X: Y = B-knot + B(1)X
+m.bike <- lm(count ~ temp, data = d.in)
+summary(m.bike)
+
+coef(m.bike)
+#Coefficients:
+#Intercept = 6.0 is beta-knot (count when temp=0)
+#Slope = 9.2 is beta-n (9.2 is unit change in count (y-var) per 1 unit change in temp (x-var))
+
+confint(m.bike)
+#B-knot: 6.0 (95% CI: -2.7, 14.7)
+#B-1: 9.2 (95% CI: 8.8, 9.6)
+
+
+
+```
+
+(b) Interpret your results in terms of increase or decrease in temperature. Mention specifically what is the  meaning of the intercept and the direction and magnitude of the association between temperature and count. 
+
+Ans: Intercept means when degrees Celsius is zero, bike rental count is ~6. Since the slope  is 9.2 with a reasonably tight confidence interval, this means that an average increase in one unit of X (here being degrees Celsius) correlates to 9.2 units of Y (here being the count, i.e. the number of bike rentals). So, one additional degree Celsius correlates to an average additional 9.2 bike rentals. 
+
+
+(c) Using mutate, create a new variable temp_f which is Farenheit representation of values in the temp variable. Perform the regression count ~ temp_f and interpret the results. What conclusions can you draw from this experiment?   
+
+Ans: The slope (B1) here is ~5.1, which means about 5 more bikes are rented per degree increase in Fahrenheit. This makes sense with respect to the findings for temperature increases in Celsius units, since the conversion from Celsius to Fahrenheit is 9/5 and the change in slope simply reflects the change in unit of measurement for the x-variable. The same is true for the beta-knot intercept, since the conversion formula adds 32 degrees (or units of x-var), the y-intercept decreases commensurately with the unit conversion. 
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+d.in <- d.in %>%
+  mutate(temp_f = ((d.in$temp*1.8)+32))
+
+
+m2.bike <- lm(count ~ temp_f, data = d.in)
+summary(m2.bike)
+
+coef(m2.bike)
+
+confint(m2.bike)
+
+```
+
+
+## Question 2: Multiple Linear Regression - I
+On the same datasetas Q1, perform the following multiple linear regression: count ~ temp + season + humidity + weather + year. Keep season and weather as categorical variables. Interpret your results through the following means :
+
+(a) what is the intercept and what does it mean? 
+
+Ans: For a multiple linear regression, we use coef to isolate intercept and slope for each x-variable with respect to y-var count (rentals). The intercept (beta-knot) here as seen in summary(m3.bike) and coef(m3.bike)[1] is the Y-var value when ALL other x-variables = 0. That is, it is the rental count (98.5) when all other independent variables are zero. 
+
+
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#count = continuous, # bikes rented per hou
+#season = categorical, converted to factor type
+d.in <- d.in %>%
+  mutate(season = as.factor(season))
+
+#humidity = continuous, percent relative humidity
+#weather = categorical, already converted to factor type and type 4 (storm) omitted as outliers
+#year = categorical (2011 vs 2012)
+
+#hypotheses as count increases: temp increases, season 1
+
+m3.bike <- lm(count ~ temp + season + humidity + weather + year, data = d.in)
+
+#Note: for categorical variables, the reference variable is the one not appearing in summary (e.g. season 1 and weather 1 are reference categories)
+summary(m3.bike)
+
+#average bike rental count at ALL other vars = 0. which is ~98.5
+
+coef(m3.bike)[1]
+
+#holding all other  variables constant, an increase in one degree Celsius increases count by ~10.4 
+coef(m3.bike)[2]
+
+#holding all other variables  constant, there is no statistically significant correlation between count and summer season with spring season as reference
+coef(m3.bike)[3]
+
+
+#holding all other variables constant, season 3 (fall) compared to reference season 1 (spring) shows an average count decrease of ~29.1
+coef(m3.bike)[4]
+
+#holding all other vars constant, season 4 (winter) compared to season 1 (spring) shows an average count increase of ~67.
+coef(m3.bike)[5]
+
+#holding all other vars constant, an increase in 1% humidity shows an average count decrease of ~2.7
+coef(m3.bike)[6]
+
+#holding all other vars constant, there was not a p-value of <0.001 for correlation between count and light inclement weather compared with clear weather
+coef(m3.bike)[7]
+
+#holding all other  vars constant, there is no statistically significant correlation between count and somewhat inclement weather compared with clear weather
+coef(m3.bike)[8]
+
+#holding all other  vars constant, the year 2012 saw an average count increase in 75.9 compared to 2011
+coef(m3.bike)[9]
+
+```
+
+
+(b) how does each variable contribute to count in terms of increase or decrease?   
+
+Ans:
+1. Increase in 1 degree Celsius increases count by 10.4
+2. Summer (compared to Spring) does not affect count
+3. Fall (compared to Spring) decreases count by 29.1
+4. Winter (compared to Spring) increases count by 67
+5. Lightly inclement weather (compared to fair weather) increases count by 11 if you accept p-value <0.05 but >0.001 
+6. Somewhat inclement weather (compared to fair weather) does not affect count
+6. 2012 (compared to 2011) increases count by 75.9
+
+
+
+(c) what can you say about the results and the quality of fit? Use pvalue threshold of < 0.001 to reject any null hypothesis.
+
+Ans: The F-statistic p-value is very low, which means the model is significant. However, the R-squared statistic is also somewhat low (about 32% of the variation is explained). We can reject the null hypothesis that all B values = 0 using the F-statistic p-value. 
+
+
+
+## Question 3: Multiple Linear Regression - II
+This question deals within application of linear regression. Download the dataset titled "sales_advertising.csv" from Files -> Assignments -> Assignment_3. The dataset measure sales of a product as a function of advertising budgets for TV, radio, and newspaper media. The following is the data dictionary.    
+
+(1) TV: advertising budget for TV (in thousands of dollars)  
+(2) radio: advertising budget for radio (in thousands of dollars)  
+(3) newspaper:  advertising budget for newspaper (in thousands of dollars)  
+(4) sales: sales of product (in thousands of units)   
+
+(a) Plot the response (sales) against all three predictors in three separate plots. Write your code below. Do any of the plots show a linear trend?      
+
+Ans: Sales by TV advertising budget shows the tightest linear trend. Sales by radio advertising budget shows a decent linear trend, and there may or may not be a weak linear trend with sales by newspaper advertising budget
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+# set up
+rm(list=ls())
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+# Read the dataset in
+d.in <- read.csv("sales_advertising.csv", header = TRUE)
+
+#get coefficients to create ablines on plots
+m.sales_tv <- lm(Sales ~ TV, data = d.in)
+coef(m.sales_tv)
+m.sales_radio <- lm(Sales ~ Radio, data = d.in)
+coef(m.sales_radio)
+m.sales_news <- lm(Sales ~ Newspaper, data = d.in)
+coef(m.sales_news)
+
+
+plot(Sales ~ TV,
+        data=d.in, 
+        main = "Sales by TV Advertising Budget",
+        ylab = "Sales (1000 units)",
+        xlab = "Advertising Budget ($1000)",
+        cex = 0.4)
+abline(m.sales_tv$coefficients)
+
+plot(Sales ~ Radio,
+        data=d.in, 
+        main = "Sales by Radio Advertising Budget",
+        ylab = "Sales (1000 units)",
+        xlab = "Advertising Budget ($1000)",
+        cex = 0.4)
+abline(m.sales_radio$coefficients)
+
+plot(Sales ~ Newspaper,
+        data=d.in, 
+        main = "Sales by Newspaper Advertising Budget",
+        ylab = "Sales (1000 units)",
+        xlab = "Advertising Budget ($1000)",
+        cex = 0.4)
+abline(m.sales_news$coefficients)
+
+
+```
+
+
+(b) Perform a simple regression to model sales ~ TV. Write your code below. What is the observed association between sales and TV? What is the null hypothesis for this particular model? From the regression, what can we say about the null hypothesis? Use a p-value threshold of <0.05 to indicate significance.        
+
+Ans: The observed association between sales and TV advertising budget is that when the advertising budget (x-var = TV) is zero, there are approximately 7.032.y-unit Sales, where the unit is 1000 sales. So, ~7,032 sales at a TV budget of zero. The Beta-1 slope of x-var is 0.048, which means that for every 1-unit ($1000) increase in TV advertising budget, there will be an average increase in 0.048.1000 = 48 sales. Both of these have p-values <0.001, which means we can reject the null hypothesis that all B-values = 0. Additionally, standard error is relatively low and both sides of 95% confidence interval are positive.  
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+m.tv <- lm(Sales ~ TV, data = d.in)
+summary(m.tv)
+
+```
+
+(c) Perform a simple regression to model sales ~ newspaper. Write your code below. What is the observed association between sales and newspaper? What is the null hypothesis for this particular model? From the regression, what can we say about the null hypothesis? Use a p-value threshold of <0.05 to indicate significance.       
+
+Ans: The observed assocation shows beta-knot intercept = 12.35, so converting to units this shows that when Newspaper advertising budget is zero, there are approximately 12,350 sales. The beta-1 slope is 0.055, so this indicates for each additional unit of x-var (each $1000 spent for newspaper advertising) creates an average increase of ~55 sales. Both p-values are <0.05, so we can reject the null hypothesis that all beta-values = 0. Additionally, standard error is relatively low and both sides of 95% confidence interval are positive.  
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+m.news <- lm(Sales ~ Newspaper, data = d.in)
+summary(m.news)
+
+
+```
+
+(d)  Perform a multiple linear regression to model sales ~ TV + radio + newspaper.      
+Ans.
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+m.sales <- lm(Sales ~ TV + Radio + Newspaper, data = d.in)
+summary(m.sales)
+
+
+```
+i.  What are the observed associations between sales and each of the media budgets? Mention which associations are significant. Use a p-value threshold of <0.05 to indicate significance.      
+
+Ans: When all advertising budgets are zero, there are an average ~2940 sales. Given p-value <0.001 and relatively small SE of beta-n coefficient, both TV and Radio appear to have associations with sales. For each 1000 dollars in TV advertising budget, there should be an increase in ~46 sales. For each 1000 dollars in radio advertising budget, there should be an increase of ~189 sales. There is no observed association between newspaper advertising budget and sales. First, the p-value is much greater than 0.05, at 0.86. Second, the SE is almost six times as big as beta-1 variable, indicating massive variation. Third, one side of the confidence interval is negative while the other is positive, so we can conclusively say there is no association.
+
+Looking at the overall fit of the model, R^2 is relatively high (RSS/TSS is ~90%) indicating most of the variation in the model is explained. The F-statistic p-value is very low (<0.001), indicating the model is valid.
+
+ii. Do you observe any difference in the associations in the multiple regression model vs. the simple regression model? Explain why or why not.     
+
+Ans: Yes and no. The associations between Sales and advertising budget for TV were significant for both simple and multiple regression models, and their beta-1 slope values were similar. Beta-knot (the intercept) decreased significantly because it reflected average sales when budget for all 3 media outlets was zero. However, the association between Sales and Newspaper in the multiple regression model showed no association. The multiple regression model allows us to use the F-statistic to adjust for the number of predictor variables and the R^2 statistic to explain variation. This means the multiple regression model here is significant and variation in the data is well-explained. 

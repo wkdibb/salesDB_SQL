@@ -1,0 +1,483 @@
+---
+title: "Assignment II "
+author: "Will Dibb"
+date: "January 28, 2019"
+output: html_document
+---
+
+> Please submit your answers by 5.59 pm Monday February 4, 2019.  Remember to show your work. In other words, always use echo=TRUE for the R code chunks that you provide. NOTE - All plots must show proper title, axis lables, and any legends used. Points will be deducted otherwise. Submissions must be made in HTML. Problem 6 has an additional submission to be made in DOCX or PDF format. 
+
+##### Initialization
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+# Use this space to call any libraries here
+#clear 
+rm(list=ls())
+#load libraries
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(tidyverse)
+library(grid)
+
+```
+
+##### Section 1: Plotting
+Q1) In Lecture 3, we worked with two datasets: "case_patients.csv" and "control_patients.csv" (under Files -> lectures -> lecture_3). We will use those files again in this question. 
+
+
+a) Plot a box plot of LOS ~ outcome for the whole cohort. You will have to combine case and control into a single dataset with the outcome for this purpose (as shown in the lecture notes). Write down any observations.
+
+Ans. 
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+# Insert code below
+#Table
+#                Case    Control   Total
+#Exposed          A       B         N(exposed)
+#Not Exposed      C       D         N(not exposed)
+#               N(case) N(control)  N
+    
+
+d.0 <- read.csv("control_patients.csv")
+d.1 <- read.csv("case_patients.csv")
+
+#to keep this cohort together in a single dataset, use 'rep' to create an outcome variable and then stitch data frames together
+
+d.0 <- d.0 %>%
+  #add outcome variable representation '0' column for control patients
+  mutate(outcome = rep('0', nrow(d.0)))
+d.1 <- d.1 %>%
+  #add outcome variable representation '1' column for case patients
+  mutate(outcome = rep('1', nrow(d.1)))
+
+#rbind adds listings together
+d.in <- rbind(d.0, d.1)
+
+#outcome is a continuous variable, change it to factor type to sort
+d.in$outcome <- as.factor(d.in$outcome)
+
+boxplot(los~outcome, 
+        data=d.in, 
+        main = "Length of Stay by Outcome",
+        ylab = "Length of Stay",
+        xlab = "Incidence of Outcome",
+        #modify y-axis limits to show relevant scope
+        ylim = c(0,45),
+        #limit size of outlier points for clarity
+        outcex = 0.4)
+
+#Observations: median LOS increases with incidence of outcome, and there is a wider distribution range of LOS for those with outcome incidence. There are also a handful of outliers for no outcome including ~400 day LOS (which remained in the cohort as we weren't asked to subjectively prune data but hey I noticed it)
+
+
+```
+
+b) Plot a box plot of LOS ~ gender for the two groups in separate graphs. Write down any observations. 
+
+Ans. 
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+# Insert code below
+
+d.in$gender <- as.factor(d.in$gender)
+d.fem <- filter(d.in, gender == "female")
+d.mal <- filter(d.in, gender == "male")
+  
+
+
+boxplot(los~outcome,
+        data=d.fem, 
+        main = "Length of Stay by Outcome (Female)",
+        ylab = "Length of Stay",
+        xlab = "Incidence of Outcome",
+        ylim = c(0,45),
+        outcex = 0.4)
+
+boxplot(los~outcome,
+        data=d.mal, 
+        main = "Length of Stay by Outcome (Male)",
+        ylab = "Length of Stay",
+        xlab = "Incidence of Outcome",
+        ylim = c(0,45),
+        outcex = 0.4)
+
+#Observations: there does not appear to be any significant difference between length of stay for outcome incidence between male and female cohorts. 
+```
+
+
+##### Section 2: Odds and odds ratios calculation
+Q2) In a case-cohort study of 2000 patients studying renal disease caused by smoking, a group found the following numbers.   
+1. A total of 300 patients suffered renal disease  
+2. A total of 1000 patients were smokers  
+3. Two-thirds of the patients who suffered renal disease smoked.  
+
+
+(a) Identify the primary exposure and outcome of interest.  
+
+Ans. Primary exposure is smoking and outcome of interest is renal disease.
+
+(b) Complete the below 2x2 table of exposure (on row) against outcome (on column).  
+
+Ans.
+
+Table
+                Case    Control   Total
+Exposed          A       B         N(exposed)
+Not Exposed      C       D         N(not exposed)
+               N(case) N(control)  N
+
+Table        |Renal Dz |No Renal Dz| Total
+-------------|---------|-----------|----------
+Smoker       |200      |800        |1000
+Non-Smoker   |100      |900        |1000 
+Total        |300      |1700       |2000    
+
+(c) Calculate the odds ratio of incidence of renal disease among smokers.
+
+Ans. ~2.25
+
+Odds is probability of exposure / 1- probability of exposure
+(A/(A+C)/(1-(A/(A+C)))) = A/C
+Odds of 'Case' is A/C, or group of smokers with renal disease over group of non-smokers with renal disease
+Odds of 'Control' is B/D, or group os smokers without renal disease over group of non-smokers without renale disease
+Odds ratio then is the ratio between Odds of Case and Odds of Control, or (A/C)/(B/D)
+Odds of case = A/C, A/C = 200/100, or 2
+Odds of control = B/D, B/D = 800/900, or 0.889
+Odds ratio = (A/C)/(B/D) = 2/0.889, or 2.25
+
+Q3) Answer the following:   
+
+(a) Suppose that an individual has a 18% chance of defaulting on their credit card payment. What are the odds that this individual will default?    
+
+Ans. ~0.22
+
+Odds = P/(1-P), or the chance event will occur divided by the chance the event will not occur.
+0.18/0.82 = 0.22 
+
+(b) On average, what fraction of people with an odds of 0.4 of defaulting on their credit card payment will actually default?  
+
+Ans. ~3/10 or ~29%
+
+Odds = P/(1-P) = 0.4
+P/(1-P) = 0.4
+P = 0.4(1-P)
+P = 0.4 - 0.4P
+1.4P = 0.4
+P = 0.4/1.4 = 0.286 = ~29%
+
+##### Section 3: Study design
+
+Q4) A hospital H noticed that approximately 10% of patients who underwent a particularly surgery (surgery S) also developed infection during their post-surgery recovery period. For surgery S, the post-surgery recovery period is 2 weeks. It is suspected a majority of these patients (about 60%) may have taken a particular antibiotic (ABX) during a 3-month period prior to the surgery. ABX could kill the "good" bacteria in the patients body causing the patient to be prone to infection after the surgery.  
+
+(a) What is the outcome of interest and the exposure of interest in this study?  
+
+Ans. Exposure of interest is ABX antibiotic within 3 months prior to surgery S, outcome of interest is incidence of infection after surgery S 
+
+(b) Design a matched case-control study (matched on age and gender) that will allow a researcher to test this hypothesis. Identify inclusion and exclusion criteria.
+
+Ans. 
+Outcome ~ Exposure (group by outcome, assess exposure)
+Exposure: ABX antibiotic within 3 months prior to surgery S
+Outcome: Post-surgery S infection
+Matched: Age and Gender (Each case patient will need a reciprocal control patient with the same gender and age +/- 5 years)
+Inclusion criteria: patients that had  surgery S, patients that had infectious disease within 2 weeks post-surgery (case)
+Exclusion criteria: patients <2 weeks post-surgery S
+
+
+Case controls are past to present and useful for when the identified outcome (here being infection after surgery) is low. Case controls assess exposure given outcome. Steps for a case-control study are:
+Build outcome control group (here would be a group of patients who did not have infection after surgery)
+Determine exposure variable incidence between the existing case cohort (patients with infection) and the control cohort built (patients wo infection)
+
+Example: given a cohort of patients identified as having met inclusion and exclusion criteria, evaluate case cohort for age (range) and gender. Develop control cohort of patients negative for outcome. Compare cohorts grouped by outcome (infection) by their relative incidence of exposure (ABX). 
+
+(c) Design a retrospective cohort study that will allow a researcher to test this hypothesis. Identify inclusion and exclusion criteria. 
+
+Ans. 
+Exposure ~ Outcome (group by exposure, assess outcome)
+Exposure: ABX antibiotic within 3 months prior to surgery S
+Outcome: Post-surgery S infection
+Inclusion criteria: patients that had surgery S
+Exclusion criteria: patients <2 weeks post-surgery S
+
+Retrospective cohort studies are past to present and useful for when the identified outcome is high. Retrospectives assess outcome given exposure by grouping cohort into groups positive/negative for exposure (ABX), and assessing those groups for relative incidence of outcome (post-surgery infection)
+
+Example: given a cohort of patients identified as having met inclusion and exclusion criteria, group based on exposure (ABX yes = 1, no = 0) and measure respective groups for incidence of identified outcome (infection).
+
+(d) Design a prospective cohort study that will allow a researcher to test this hypothesis. Identify inclusion and exclusion criteria.
+
+Ans. 
+Exposure ~ Outcome (group by exposure, assess outcome)
+Exposure: ABX antibiotic within 3 months prior to surgery S
+Outcome: Post-surgery S infection
+Inclusion criteria: patients that had surgery S
+Exclusion criteria: patients that did not receive ABX antibiotic within 3 months (for ABX yes = 1)
+
+Prospective cohort studies are present to future, and assess identified outcomes given exposure
+
+Example: patients who receive ABX antibiotic prior to surgery S will be identified and assessed for incidence of outcome (infection) once they are >2 weeks post-surgery S. This is compared to patients who did not receive ABX and assessed for infx. 
+
+
+##### Section 4 : Creating Table 1. 
+Q5) Creating a Table 1: Under Assignments -> Assignment_II, read in the file called "smokedata.csv". The codebook is as follows:
+
+. ID:	Unique numeric identifier     
+. quit:	0= did not quit smoking in previous 12 months, 1= quit smoking in previous 12 months    
+. advice	0= reported ‘did not receive advice from healthcare provider regarding quitting smoking.’, 1= reported ‘did receive advice…’      
+. ill	0= no major illness diagnosed in previous 12 months, 1= major illness diagnosed in previous 12 months     
+. sex	0=male, 1=female      
+. educ	0= less than 12 years, 1= 12 years or more      
+. provtype	0= Physician, 1= Nurse Practitioner     
+. birth_yr	Four digit year of patient’s birth      
+. app_yr	Four digit year of patient’s appointment        
+. age_at_app*	Patient’s age at the appointment.
+
+*For simplicity, we will assume all patients have already had their birthday when they attend their appointment. Therefore, age should equal app_yr – birth_yr.
+
+The objective of the study behind the dataset was to determine the association between of providing smoking cessation advice to patients and whether they quit smoking during the same time period.
+
+Complete the attached Table 1 (Problem6_Table1.docx) and upload it into Canvas (you can upload either .docx or .pdf). Use the space below to show your work.
+
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+
+
+d.smoke <- read.csv("smokedata.csv")
+#remove rows with quit == '9' from data as needed for unknown quitter/non-quitter values
+d.smoke <- d.smoke %>%
+  filter(d.smoke$quit == 0 | d.smoke$quit == 1)
+
+#remove rows with negative ages
+d.smoke <- d.smoke %>%
+  filter(d.smoke$age_at_appt >= 0 & d.smoke$age_at_appt < 150)
+
+#format age, sex, illness, education, advice, provider type, quitting
+d.smoke$age_at_appt <- as.integer(d.smoke$age_at_appt)
+d.smoke$sex <- as.factor(d.smoke$sex)
+d.smoke$ill <- as.factor(d.smoke$ill)
+d.smoke$educ <- as.factor(d.smoke$educ)
+d.smoke$advice <- as.factor(d.smoke$advice)
+d.smoke$provtype <- as.factor(d.smoke$provtype)
+d.smoke$quit <- as.factor(d.smoke$quit)
+
+#quitter + non-quitter data frames
+d.noquit <- filter(d.smoke, quit == 0)
+d.quit <- filter(d.smoke, quit == 1)
+
+#AGE
+
+#output for mean/SD age
+cat("Mean age and SD of non-quitters: ", round(mean(d.noquit$age_at_appt)), " (", round(sd(d.noquit$age_at_appt)),") ", "\n", sep='')
+
+cat("Mean age and SD of quitters: ", round(mean(d.quit$age_at_appt)), " (", round(sd(d.quit$age_at_appt)),") ", "\n", sep='')
+
+#t-test output for p-value of quitter/non-quitter cohorts by age (comparing continuous age variables between quitter and non-quitter groups)
+age.test <- t.test(d.quit$age_at_appt, d.noquit$age_at_appt)
+age.test
+
+#SEX
+
+#count variables for quitters and non-quitters by sex
+noquit_f_ct <- d.noquit %>%
+  filter(d.noquit$sex == 1) %>%
+  nrow()
+
+quit_f_ct <- d.quit %>%
+  filter(d.quit$sex == 1) %>%
+  nrow()
+
+noquit_m_ct <- d.noquit %>%
+  filter(d.noquit$sex == 0) %>%
+  nrow()
+
+quit_m_ct <- d.quit %>%
+  filter(d.quit$sex == 0) %>%
+  nrow()
+
+#percentage variables for quitters and non-quitters by sex
+
+smoke_ct <- d.smoke %>%
+  nrow()
+
+fem_tot <- noquit_f_ct + quit_f_ct
+
+mal_tot <- noquit_m_ct + quit_m_ct
+
+noquit_f_percent <- round((noquit_f_ct/fem_tot)*100)
+
+quit_f_percent <- round((quit_f_ct/fem_tot)*100)
+
+noquit_m_percent <- round((noquit_m_ct/mal_tot)*100)
+
+quit_m_percent <- round((quit_m_ct/mal_tot)*100)
+
+#output for female quitters and non-quitters
+
+cat("Female non-quitters: ",  noquit_f_ct, " (", noquit_f_percent, "%)", "\n", sep='')
+cat("Female quitters: ",  quit_f_ct, " (", quit_f_percent, "%)", "\n", sep='')
+
+#output for male quitters and non-quitters
+
+cat("Male non-quitters: ",  noquit_m_ct, " (", noquit_m_percent, "%)", "\n", sep='')
+
+cat("Male quitters: ",  quit_m_ct, " (", quit_m_percent, "%)", "\n", sep='')
+
+#chi-square output for quitters and non-quitters by sex
+#compare categorical variables by building a table and using chisq
+sex.table <- with(d.smoke, table(quit, sex))
+
+#H0: quitting not associated with sex
+#HA: quitting associated with sex
+chisq.test(sex.table)
+
+#ILLNESS
+
+#count variables for quitters and non-quitters by illness
+
+noquit_ill_ct <- d.noquit %>%
+  filter(d.noquit$ill == 1) %>%
+  nrow()
+
+quit_ill_ct <- d.quit %>%
+  filter(d.quit$ill == 1) %>%
+  nrow()
+
+#percent variables for quitters and non-quitters by illness
+
+ill_ct <- d.smoke %>%
+  filter(d.smoke$ill == 1) %>%
+  nrow()
+
+noquit_ill_percent <- round((noquit_ill_ct/ill_ct)*100)
+
+quit_ill_percent <- round((quit_ill_ct/ill_ct)*100)
+
+#summary output of count and percentages for quitters and non-quitters with major illness in last 12 months
+
+cat("Non-quitters with major illness: ",  noquit_ill_ct, " (", noquit_ill_percent, "%)", "\n", sep='')
+
+cat("Quitters with major illness: ",  quit_ill_ct, " (", quit_ill_percent, "%)", "\n", sep='')
+
+
+#chi-square output for quitters and non-quitters with major illness
+#compare categorical variables by building a table and using chisq
+ill.table <- with(d.smoke, table(quit, ill))
+ill.table
+
+#H0: quitting not associated with illness
+#HA: quitting associated with illness
+chisq.test(ill.table)
+
+#EDUCATION
+
+#count variables for quitters and non-quitters by net education
+
+noquit_edu_ct <- d.noquit %>%
+  filter(d.noquit$educ == 1) %>%
+  nrow()
+
+quit_edu_ct <- d.quit %>%
+  filter(d.quit$educ == 1) %>%
+  nrow()
+
+noquit_noedu_ct <- d.noquit %>%
+  filter(d.noquit$educ == 0) %>%
+  nrow()
+
+quit_noedu_ct <- d.quit %>%
+  filter(d.quit$educ == 0) %>%
+  nrow()
+
+#percentage variables for quitters and non-quitters by net education
+
+edu_tot <- noquit_edu_ct + quit_edu_ct
+
+noedu_tot <- noquit_noedu_ct + quit_noedu_ct
+
+noquit_edu_percent <- round((noquit_edu_ct/edu_tot)*100)
+
+quit_edu_percent <- round((quit_edu_ct/edu_tot)*100)
+
+noquit_noedu_percent <- round((noquit_noedu_ct/noedu_tot)*100)
+
+quit_noedu_percent <- round((quit_noedu_ct/noedu_tot)*100)
+
+#summary output of count and percentages for quitters and non-quitters for > 12 years of education
+
+cat("Non-quitters with >12 years education: ",  noquit_edu_ct, " (", noquit_edu_percent, "%)", "\n", sep='')
+
+cat("Quitters with >12 years education: ",  quit_edu_ct, " (", quit_edu_percent, "%)", "\n", sep='')
+
+#summary output of count and percentages for quitters and non-quitters for 12 or less years of education
+
+cat("Non-quitters with </= 12 years education: ",  noquit_noedu_ct, " (", noquit_noedu_percent, "%)", "\n", sep='')
+
+cat("Quitters with </= 12 years education: ",  quit_noedu_ct, " (", quit_noedu_percent, "%)", "\n", sep='')
+
+#chi-square output for quitters and non-quitters with and without >12yrs education
+#compare categorical variables by building a table and using chisq
+edu.table <- with(d.smoke, table(quit, educ))
+
+#H0: quitting not associated with education
+#HA: quitting associated with education
+chisq.test(edu.table)
+
+
+#ADVICE
+
+#count variables for quitters and non-quitters that received advice
+noquit_adv_ct <- d.noquit %>%
+  filter(d.noquit$advice == 1) %>%
+  nrow()
+
+quit_adv_ct <- d.quit %>%
+  filter(d.quit$advice == 1) %>%
+  nrow()
+
+#percentage variables for quitters and non-quitters that received advice
+
+noquit_adv_percent <- round((noquit_adv_ct/smoke_ct)*100)
+
+quit_adv_percent <- round((quit_adv_ct/smoke_ct)*100)
+
+#summary output of count and percentages for quitters and non-quitters that received advice
+
+cat("Non-quitters that received advice: ",  noquit_adv_ct, " (", noquit_adv_percent, "%)", "\n", sep='')
+
+cat("Quitters that received advice: ", quit_adv_ct, " (", quit_adv_percent, "%)", "\n", sep='')
+
+#chi-square output for quitters and non-quitters that received advice
+#compare categorical variables by building a table and using chisq
+adv.table <- with(d.smoke, table(quit, advice))
+
+#H0: quitting not associated with advice
+#HA: quitting associated with advice
+chisq.test(adv.table)
+
+
+#PROVIDER
+
+#count variables for quitters and non-quitters that had a physician 
+noquit_provtype_ct <- d.noquit %>%
+  filter(d.noquit$provtype == 0) %>%
+  nrow()
+
+quit_provtype_ct <- d.quit %>%
+  filter(d.quit$provtype == 0) %>%
+  nrow()
+
+#percentage variables for quitters and non-quitters that had  a physician
+noquit_provtype_percent <- round((noquit_provtype_ct/smoke_ct)*100)
+
+quit_provtype_percent <- round((quit_provtype_ct/smoke_ct)*100)
+
+#summary output of count and percentages for quitters and non-quitters that had a physician provider
+
+cat("Non-quitters that had physician provider: ",  noquit_provtype_ct, " (", noquit_provtype_percent, "%)", "\n", sep='')
+
+cat("Quitters that had physician provider: ", quit_provtype_ct, " (", quit_provtype_percent, "%)", "\n", sep='')
+
+#compare categorical variables by building a table and using chisq
+provtype.table <- with(d.smoke, table(quit, provtype))
+
+#H0: quitting not associated with provider type
+#HA: quitting associated with provider type
+chisq.test(provtype.table)
+
+
+```

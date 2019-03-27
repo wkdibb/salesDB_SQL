@@ -1,0 +1,173 @@
+---
+title: "Assignment V"
+author: "Will Dibb"
+date: "March 5, 2019"
+output: html_document
+---
+
+### Due Date: Monday March 11, 2019 at 5:59 pm.
+
+## Introduction
+We are going to use a simulated two-class data set with 200 observations for training and 100 observations for testing, which includes two features, and in which there is a visible but non-linear separation between the two classes. Use the code below for creating such a dataset.
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+rm(list = ls())
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(pROC)
+library(caret)
+
+
+# set a seed
+set.seed(1)
+
+# ---- Create a training set ---- #
+# create a matrix with 200 rows and two colums with values sampled from a normal distribution.
+x <- matrix(rnorm(200*2), ncol = 2)
+# Introduce some non-linearity where we move points around
+x[1:100,] <- x[1:100,] + 2
+x[101:150,] <- x[101:150,] -2
+# assign class labels
+y <- c(rep(1, 150), rep(0, 50))
+# this forms a training set
+d.train <- data.frame(x = x, y = as.factor(y))
+names(d.train) <- c("X1", "X2", "Y")
+
+
+# ---- Create a test set ---- #
+# create a matrix with 100 rows and two colums with values sampled from a normal distribution.
+x <- matrix(rnorm(100*2), ncol = 2)
+# Introduce some non-linearity where we move points around
+x[1:25,] <- x[1:25,] + 2 # moves points to the top-right of a 2D space
+x[26:75,] <- x[26:75,] -2 # moves points to the bottom-left of a 2D space
+# assign class labels
+y <- c(rep(1, 75), rep(0, 25)) 
+# this forms a testing set
+d.test <- data.frame(x = x, y = as.factor(y))
+names(d.test) <- c("X1", "X2", "Y")
+```
+
+
+
+
+## Question 1
+Create a scatter-plot of all data points in the training set color-labeled by their class type. You will notice that one class is in the center of all points of the other class. In other words, the separation between the classes is a circle around the points with Y as -1. Repeat the same for the testing set. 
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+
+ggplot(d.train, 
+       aes(x=X1, y = X2, color = Y)) + geom_point() + ggtitle("Train Set X1 by X2")
+
+ggplot(d.test,
+       aes(x=X1, y = X2, color = Y)) + geom_point() + ggtitle("Test Set X1 by X2")
+
+
+
+
+```
+
+
+
+## Question 2
+Buid a neural network with a variable hidden layer network size from 2 to 50. Feel free to explore different decay rates using "expand.grid" as shown in class. Perform testing on d.test and report the final AUC with 95% CI. 
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#format to yes/no caret with new column
+d.train$Y_cat <-ifelse(d.train$Y == 1, "Yes", "No")
+d.test$Y_cat <- ifelse(d.test$Y == 1, "Yes", "No")
+
+#omit lame column
+d.train <- d.train %>% 
+  select(-c(Y))
+
+d.test <- d.test %>% 
+  select(-c(Y))
+
+
+#set training parameters
+fit_control <- trainControl(method = "cv",
+                            number = 3,
+                            classProbs = TRUE,
+                            summaryFunction = twoClassSummary)
+
+#set a grid of parameters to train over
+nnet_params <- expand.grid(size = seq(from = 2, 
+                                      to = 50,
+                                      by = 1),
+                                      decay = 2e-3)
+
+#create the model using training data
+m.ann_x <- train(Y_cat ~.,
+               data = d.train,method = "nnet",
+               metric = "ROC",
+               trControl = fit_control,
+               tuneGrid = nnet_params,
+               trace = FALSE)
+
+test_predictions <-predict(m.ann_x, 
+                           newdata = d.test, 
+                           type = "prob")
+
+d.test$predict_Y <- test_predictions$Yes
+
+pred_roc <- roc(response=d.test$Y_cat, 
+               predictor = d.test$predict_Y, 
+               direction = "<")
+
+cat("AUC :",auc(pred_roc), "\n")
+cat("95% CI: ", ci.auc(pred_roc))
+
+
+```
+
+
+
+## Question 3
+
+1. Build a logistic regression prediction model using d.train. Test on d.test, and report your test AUC.
+
+
+```{r}
+
+#fit a binomial logistic model on the training dataset
+
+#factor format Y vars
+d.train$Y_cat <- as.factor(d.train$Y_cat)
+d.test$Y_cat <- as.factor(d.test$Y_cat)
+
+#run logistic regression on train dataset
+m.log <- glm(Y_cat ~ ., 
+             data = d.train, 
+             family = "binomial")
+
+#perform a prediction using the test dataset
+d.test$predict_Y <- predict.glm(m.log, 
+                                  newdata = d.test, 
+                                  type = "response")
+
+#this returns predicted probabilities of Y categorical status for each observation in a new column in the test dataset
+
+#Sort predicted probabilities into class labels since this is a classification model based on a cutoff (0.5 here)
+
+d.test$predict_Y <- ifelse(d.test$predict_Y >= 0.5, 1, 0)
+
+#create ROC curve
+pred_roc <- roc(response=d.test$Y_cat, 
+               predictor = d.test$predict_Y, 
+               direction = "<")
+
+#calculate and report AUC
+cat("AUC :",auc(pred_roc), "\n")
+
+
+```
+
+
+
+
+2. Which of the two models leads to better performance? Explain in no more than 2 sentences why.        
+
+Ans. The artificial neural network performs better by Area Under Curve (AUC) metric with respect to validity of fit for each model. AUC is 0.5 for the logistic regression model, that indicates no meaningful fit, as it is grouping half on each side of the ROC. 

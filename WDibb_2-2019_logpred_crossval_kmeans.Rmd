@@ -1,0 +1,455 @@
+---
+title: "Assignment IV"
+author: "Will Dibb"
+date: "February 27, 2019"
+output: html_document
+---
+
+> Please submit your answers by 5.59 pm Monday March 4, 2019
+
+
+## Question 1: Prediction using Logistic Regression
+We are going to perform perdiction on a voting dataset (files->assignments->assignment_4). The dataset contains the  party affliation of 435 congressional members along with voting record on 16 issues that were put to vote in a single year. The party affliation is indicated as a binary variable as a 1 if the congress-person was a member of the 'A' party and 0 otherwise. The vote is indicated as 1 (if the member voted yes) and 0 (if ithe member voted no).
+
+a) You will notice that the class-split is fairly even in the dataset.
+
+0 : 168 members
+1 : 267 members
+
+Using caret, create a rough 80-20 split of the dataset into training and testing. In other words, 80% of the data should comprise the training dataset and 20% of the data should comprise the testing dataset. Ensure that the class membership is even (in other words, the proportion of 1 and 0 in both training and testing should be the approximately the same)
+
+
+NOTE: Set the seed to 476
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+# set up
+rm(list=ls())
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+library(pROC)
+library(caret)
+library(lattice)
+
+d.in <- read.csv("data_votes.csv")
+
+#factor format all columns
+d.in$party_A <- as.factor(d.in$party_A)
+d.in$handicapped_infants <- as.factor(d.in$handicapped_infants)
+d.in$water_project_cost_sharing <- as.factor(d.in$water_project_cost_sharing)
+d.in$adoption_of_bufget_resolution <- as.factor(d.in$adoption_of_bufget_resolution)
+d.in$physician_fee_freeze <- as.factor(d.in$physician_fee_freeze)
+d.in$el_salvador_aid <- as.factor(d.in$el_salvador_aid)
+d.in$religious_group_in_schools <- as.factor(d.in$religious_group_in_schools)
+d.in$anti_satellite_test_ban <- as.factor(d.in$anti_satellite_test_ban)
+d.in$nicaragua_aid <- as.factor(d.in$nicaragua_aid)
+d.in$mx_missile <- as.factor(d.in$mx_missile)
+d.in$immigration <- as.factor(d.in$immigration)
+d.in$syn_coorp_cutback <- as.factor(d.in$syn_coorp_cutback)
+d.in$education_spending <- as.factor(d.in$education_spending)
+d.in$superfund_right_to_sue <- as.factor(d.in$superfund_right_to_sue)
+d.in$crime <- as.factor(d.in$crime)
+d.in$duty_free_exports <- as.factor(d.in$duty_free_exports)
+d.in$export_act_sa <- as.factor(d.in$export_act_sa)
+
+#set seed to ensure consistent data splits 
+set.seed(476)
+
+#create an 80-20 split into test and training datasets
+
+#1. create training index
+train_index <- createDataPartition(d.in$party_A, 
+                                   p = 0.8, 
+                                   list = FALSE, 
+                                   times = 1)
+#2. create separate test and train datasets using training index
+d.train <- d.in[train_index,]
+d.test <- d.in[-train_index,]
+
+#3. confirm approximate ratio of party spread between train and test indices
+#33:53 and 135:214 similar ratios
+summary(as.factor(d.train$party_A))
+summary(as.factor(d.test$party_A))
+
+```
+
+b) Perform a logistic regression (using glm) on the training dataset and perform a prediction on the test dataset. 
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#fit a binomial logistic model on the training dataset
+m.log <- glm(party_A ~ ., 
+             data = d.train, 
+             family = "binomial")
+
+#perform a prediction using the test dataset
+d.test$pred_partyA <- predict.glm(m.log, 
+                                  newdata = d.test, 
+                                  type = "response")
+
+#this returns predicted probabilities of party A alignment for each observation in a new column in the test dataset
+
+
+```
+
+
+c) Fill the confusion matrix below using your predictions. Consider outcome 1 as being "positive" and a probability cutoff of 0.5 (i.e. if probability >= 0.5, assign the label 1). 
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#Sort predicted probabilities into class labels since this is a classification model based on a cutoff (0.5 here)
+
+d.test$pred_partyA <- ifelse(d.test$pred_partyA >= 0.5, #sort cutoff
+                             1, #above cutoff label
+                             0) #below cutoff label
+
+#Calculate TP, TN, FP, FN for confusion matrix
+
+#true positive (predicted 1, actual 1)
+tp <- d.test %>%
+  filter(party_A  == 1 & pred_partyA == 1) %>%
+  nrow()
+
+#false positive (predicted 1, actual 0)
+fp <- d.test %>%
+  filter(party_A == 0 & pred_partyA == 1) %>%
+  nrow()
+
+#true negative (predicted 0, actual 0)
+tn <- d.test %>%
+  filter(party_A == 0 & pred_partyA == 0) %>%
+  nrow()
+
+#false negative (predicted 0, actual 1)
+fn <- d.test %>%
+  filter(party_A == 1 & pred_partyA == 0) %>%
+  nrow()
+
+```
+
+Table        |  Actual_positive | Actual_negative
+-------------|------------------|----------------
+Pred_positive|      50          | 0
+Pred_negative|      3           | 33
+  
+  
+d) Calculate the following: Sensitivity, Specificity, Positive Predictive Value, Negative Predictive Value, False Positive Rate, and Accuracy.
+
+```{r, echo = FALSE, message = FALSE, warning=FALSE}
+
+
+#Calculate stat predictive model values
+
+#Sensitivity = TPR = TP/(TP+FN)
+sens <- tp/(tp+fn)
+cat("Sensitivity: ", sens, "\n")
+
+#Specificity = 1 - FPR = TN/(TN+FP)
+spec <- tn/(tn+fp)
+cat("Specificity: ", spec, "\n")
+
+#PPV (Positive Predictive Value) = TP/(TP+FP)
+ppv <- tp/(tp+fp)
+cat("PPV: ", ppv, "\n")
+
+#NPV (Negative Predictive Value) = TN/(TN+FN)
+npv <- tn/(tn+fn)
+cat("NPV: ", npv, "\n")
+
+#FPR (False Positive Rate) = 1 - specificity
+fpr <- 1 - spec
+cat("FPR: ", fpr, "\n")
+
+#Accuracy
+acc <- (tn+tp)/(tp+tn+fp+fn)
+cat("Accuracy: ", acc, "\n")
+
+
+```
+
+e) Calculate AUC (with 95% CI) using predicted probabilities
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#Predicted probabilities using prediction glm model and type = response on test data
+
+d.test$pred_default <- predict.glm(m.log, newdata = d.test, type = "response")
+
+#Calculate AUC
+
+#1. create a prediction object
+pred <- roc(response = d.test$party_A, predictor = d.test$pred_partyA, direction = "<")
+
+#2. get AUC performance
+auc_perf <- auc(pred)
+cat("AUC: ", auc_perf, "\n")
+
+#3. Get 95% CI
+ci_auc_perf <- ci.auc(pred)
+cat("95% CI: ", ci_auc_perf, "\n")
+
+
+```
+
+## Question 2: Cross-validation
+Write a program that will perform 3-fold cross-validation (using the caret package) on the above train dataset. Calculate AUC (with 95% CI) on the test dataset. 
+
+NOTE : Set your seed as 156
+
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#create a logistic regression training model using cross-validation
+#training with GLM,3-fold CV
+
+#set seed for consistent train/test split
+set.seed(156)
+
+#set training parameters with 'cv' = 3 cross validation
+training_params <- trainControl(method="cv", number = 3)
+
+#create training set function using training parameters
+m.train.glm <- train(as.factor(party_A) ~ ., 
+                     data = d.train, 
+                     method = "glm",
+                     trControl = training_params)
+
+
+#predict on test dataset using caret and training set function
+yhat_glm <- predict(m.train.glm,
+                    newdata = d.test,
+                    type = "prob")
+
+#create a prediction object with ROC
+glm.pred <- roc(predictor = yhat_glm[,2],
+                response = d.test$party_A,
+                direction = "<")
+
+#get area under curve (AUC) performance and confidennce intervals
+auc.perf <- auc(glm.pred)
+ci.auc.perf <- ci.auc(glm.pred)
+
+cat("AUC: ", auc.perf, "\n")
+
+cat("95% CI of AUC: ", ci.auc.perf, "\n")
+
+
+
+
+```
+
+
+## Question 3: Hierarchical clustering
+We are going to use the USArrests dataset. Load this using the following command 
+```{r}
+rm(list=ls())
+library(plyr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+
+library(pROC)
+library(caret)
+library(lattice)
+
+d.in <- data.frame(USArrests)
+```
+
+(a) Perform hierarchical clustering using average linkage and Euclidean distance. Write the code and show the plots below.
+
+Ans.
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#HIERARCHICAL CLUSTERING
+#bottom-up clustering where you merge the closest samples recursively
+#no need to pre-determine the number of clusters
+
+#algorithm:
+  #identify two closest points in the dataset
+  #put them in a single group (ie merge them)
+  #identify next set of closest points
+  #repeat last step until all points are done
+#ways to merge:
+  #average: use the mean distance between cluster elements
+  #complete: use the maximum distance between cluster elements
+  #single: use the minimum distance between cluster elements
+
+
+#Euclidean distance, dist():
+
+dist_in <- dist(d.in,
+                method = "euclidean")
+
+#Average linkage, hclust():
+h_in <- hclust(dist_in,
+                method="average")
+
+#Leaf plot/dendrogram
+plot(h_in, 
+     hang = 1,
+     xlab = "US States",
+     ylab = "Height",
+     main = "Hierarchical Cluster of US States Arrests by Average Linkage",
+     cex = 0.6)
+
+```
+
+(b) Perform hierarchical clustering using complete linkage and Euclidean distance, after scaling the variables to have a standard deviation of one. Write the code and show the plots below. 
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+
+#scale the data for mean 0, sd 1
+d.in <- as.data.frame(scale(d.in))
+
+#Euclidean distance, dist():
+
+dist_in <- dist(d.in,
+                method = "euclidean")
+
+#Complete (max distance) linkage, hclust():
+h_in <- hclust(dist_in,
+                method="complete")
+
+#Leaf plot/dendrogram
+plot(h_in, 
+     hang=1,
+     xlab = "US States",
+     ylab = "Height",
+     main = "Hierarchical Cluster of US States by Complete Linkage",
+     cex = 0.6)
+
+
+```
+
+
+## Question 4: K-means clustering
+Download the dataset kmeans_data.csv (Files->Assignments->Assignment_4).  The dataset contains randomly generated 100 observations of 2 variables, viz., X1 and X2
+
+(a) Plot X1 vs. X2 (i.e. X1 on the x-axis) as a scatter-plot. Write the code below.
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+
+d.kmeans <- read.csv("kmeans_data.csv")
+
+#scatterplot
+ggplot(d.kmeans, 
+       aes(X1, X2)) + geom_point() + ggtitle("X1 by X2 Scatterplot") 
+
+
+
+```
+
+
+(b) Perform a k-means clustering with $K$ = 3. Overlap the cluster labels on the scatter plot.
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+#K-means clustering estimating 3 clusters:
+
+set.seed(156)
+
+#create kmeans function with 3 centers on d.kmeans dataframe
+kmeans_in <- kmeans(d.kmeans, centers=3)
+names(kmeans_in)
+
+#centroids  for each group
+kmeans_in$centers
+
+#scatterplot X1,X2 with 3 labeled clusters and centroid points
+plot(d.kmeans$X1, 
+     d.kmeans$X2,
+     col = kmeans_in$cluster,
+     xlab = "X1",
+     ylab = "X2",
+     main = "X1 by X2 K-means Clusters",
+     pch=19,
+     cex=.5)
+text(d.kmeans$X1, d.kmeans$X2, labels = kmeans_in$cluster, pos = 3, cex = 0.5)
+points(kmeans_in$centers, col=1:3, pch=3, cex=1, lwd =3)
+
+kmeans_in$tot.withinss
+#output: 219.1
+kmeans_in$betweenss
+#output: 1771.6
+
+```
+
+(c) Perform a k-means clustering with $K$ = 4. Overlap the cluster labels on the scatter plot.
+```{r, echo = TRUE, message = FALSE, warning=FALSE}
+
+
+#K-means clustering estimating 4 clusters:
+
+set.seed(156)
+
+#create kmeans function with 4 centers on d.kmeans dataframe
+kmeans_in <- kmeans(d.kmeans, centers=4)
+names(kmeans_in)
+
+#centroids  for each group
+kmeans_in$centers
+
+#scatterplot X1,X2 with 3 labeled clusters and centroid points
+plot(d.kmeans$X1, 
+     d.kmeans$X2,
+     col = kmeans_in$cluster,
+     xlab = "X1",
+     ylab = "X2",
+     main = "X1 by X2 K-means Clusters",
+     pch=19,
+     cex=.5)
+text(d.kmeans$X1, d.kmeans$X2, labels = kmeans_in$cluster, pos = 4, cex = 0.5)
+points(kmeans_in$centers, col=1:4, pch=3, cex=1, lwd =3)
+
+kmeans_in$tot.withinss
+#output: 172.7
+kmeans_in$betweenss
+#output: 1818.1
+
+```
+
+(d) Which is a better $K$?
+
+Ans. 4 k-means clusters is better since the distance between clusters is greater and the distance within clusters is smaller for 4 clusters. 
+
+
+
+## Question 5: Similarity Metrics
+You are given the the following distance matrix that describes the euclidean distance between cities.
+
+Table     | BOS | NY  | DC  | CHI
+----------|-----|-----|-----|-----
+BOS       |  0  | 206 | 429 | 963
+NY        | 206 |  0  | 233 | 802
+DC        | 429 | 233 |  0  | 671
+CHI       | 963 | 802 | 671 |  0
+
+You are asked to perform a hierarchical clustering using single linkage. 
+
+The nearest pair of cities is BOS and NY, at distance 206. 
+
+(a) Re-calculate the distance-matrix based on the merged group BOS/NY. 
+
+Ans.   #single: use the minimum distance between cluster elements 
+
+Table     |BOS/NY | DC  | CHI
+----------|-------|-----|-----|
+BOS/NY    |   0   | 233 | 802 | 
+DC        |  233  |  0  | 671 | 
+CHI       |  802  | 671 |  0  | 
+
+D2(BOS/NY),DC)) = min(D1(BOS,DC),D1(NY,DC)) = min(439,233) = 233
+D2(BOS/NY, CHI) = min(D1(BOS,CHI),D1(NY,CHI)) = min(963,802) = 802
+                                                                   
+(b) Perform hierarchical clustering manually on paper (not using R code) until you reach two clusters. Show step-wise distance matrix calculations.
+
+Ans. 
+
+Table        |((BOS,NY),DC) | CHI
+-------------|--------------|-----|
+((BOS,NY),DC)|      0       | 671 | 
+     CHI     |     671      |  0  |  
+
+D3(((BOS,NY),DC),CHI) = min((D2(BOS,NY),CHI),D2(DC,CHI)) = min(802,671) = 671
+
+
